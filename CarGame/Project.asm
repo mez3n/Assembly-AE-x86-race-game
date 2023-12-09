@@ -68,7 +68,7 @@ movecursor 0819h
 printmessege startgame
 movecursor 0B19h
 printmessege ExitProgram
-
+mainscreen:
 ; Wait for key press
   mov ah, 0
   int 16h
@@ -78,9 +78,10 @@ printmessege ExitProgram
   je chatmode
   cmp ah, 3Ch    ; F2 key
   je gamemode
-  cmp ah, 1Bh    ; Esc key
+  cmp al, 1Bh    ; Esc key
   je ExtPrgrm    ;note we want to handle this as (ExtPrgrm) is too far
-
+  
+jmp mainscreen
 
 ExtPrgrm:
 hlt
@@ -96,6 +97,16 @@ gamemode:
   MOV    BX,101H
   INT    10H
 ;STARTING GAME
+    ;draw line for the status bar
+    mov cx,0
+    mov dx,400 ;y-axis
+    mov al,0fh
+    mov ah,0CH
+    back:int 10h
+    inc cx
+    cmp cx,640 ;x-axis
+    jnz back
+    ;Above status bar
     mov ah, 03Dh
     mov al, 0 ; open attribute: 0 - read-only, 1 - write-only, 2 -read&write
     mov dx, offset FILE_NAME1 ; ASCIIZ filename to open
