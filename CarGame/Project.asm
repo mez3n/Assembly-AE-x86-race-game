@@ -1,9 +1,16 @@
 ; THIS NEEDS A PICTURE AND TO ADD ANOTHER CAR
 .386
 DATA SEGMENT USE16
+startchat DB 'To start chatting press F1$'
+startgame DB 'To start the game press F2$'
+ExitProgram DB 'To End the program press ESC$'
+user1mess DB 'Please Enter user1 name: $'
+user2mess DB 'Please Enter user2 name: $'
+username1 db 15,?,15 DUP('$')
+username2 db 15,?,15 DUP('$')
 CUR_X DW  ?  ; ACTIVE VARIABLES TO BE USED IN FUNCTIONS
 CUR_Y DW  ?
-FIRST_RECTANGLE_X DW 10  ;initial positions of the FIRST CAR
+FIRST_RECTANGLE_X DW 60  ;initial positions of the FIRST CAR
 FIRST_RECTANGLE_Y DW  50
 SECOND_RECTANGLE_X DW  60   ;INITIAL POSITION OF TH ESECOND CAR
 SECOND_RECTANGLE_Y DW  100
@@ -23,6 +30,7 @@ IMG2 DB 2*IMG_SIZE DUP(?)
 
 CODE SEGMENT USE16
 ASSUME CS:CODE,DS:DATA
+INCLUDE macros.asm
 MAIN PROC FAR
 
 ;DEFINING MEMORY
@@ -30,13 +38,75 @@ MAIN PROC FAR
 MOV AX,DATA
 MOV DS,AX
 MOV ES,AX
-  
+;text mode
+mov ax,03h
+int 10h
+;take usernames
+;user1
+movecursor 0B19h
+printmessege user1mess
+readmessege username1
+;clear screen
+mov ax,03h
+int 10h
+;user2
+movecursor 0B19h
+printmessege user2mess
+readmessege username2
+;clear screen
+mov ax,03h
+int 10h
+;main screen
+mainscreentxt:
 
+
+;print masseges
+;move cursor to the middle
+movecursor 0519h
+printmessege startchat
+movecursor 0819h
+printmessege startgame
+movecursor 0B19h
+printmessege ExitProgram
+mainscreen:
+; Wait for key press
+  mov ah, 0
+  int 16h
+    
+; Check the pressed key
+  cmp ah, 3Bh    ; F1 key
+  je chatmode
+  cmp ah, 3Ch    ; F2 key
+  je gamemode
+  cmp al, 1Bh    ; Esc key
+  je ExtPrgrm    ;note we want to handle this as (ExtPrgrm) is too far
+  
+jmp mainscreen
+
+ExtPrgrm:
+hlt
+
+chatmode:
+;chatting code
+; ............
+
+
+gamemode:
 ;switching to video mode
   MOV    AX, 4F02H
   MOV    BX,101H
   INT    10H
 ;STARTING GAME
+    ;draw line for the status bar
+    mov cx,0
+    mov dx,400 ;y-axis
+    mov al,0fh
+    mov ah,0CH
+    back:int 10h
+    inc cx
+    cmp cx,640 ;x-axis
+    jnz back
+    ;Above status bar
     mov ah, 03Dh
     mov al, 0 ; open attribute: 0 - read-only, 1 - write-only, 2 -read&write
     mov dx, offset FILE_NAME1 ; ASCIIZ filename to open
@@ -274,14 +344,6 @@ ADD SECOND_RECTANGLE_Y,CX
 
 
 
-
-
-
-
-
-
-
-
 DRAW_NEW:
 ;drawing at the new position
 MOV CX,FIRST_RECTANGLE_X 
@@ -301,6 +363,7 @@ CALL DRAW_NEW_LOCATION_SECOND
 
 
 JMP GAME
+
 MAIN ENDP
 
 
