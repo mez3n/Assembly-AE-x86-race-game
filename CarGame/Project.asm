@@ -77,14 +77,16 @@ mainscreen:
   cmp ah, 3Bh    ; F1 key
   je chatmode
   cmp ah, 3Ch    ; F2 key
-  je gamemode
+  je gamemode    ;note we may want to handle this as (gamemode) will be too far
   cmp al, 1Bh    ; Esc key
-  je ExtPrgrm    ;note we want to handle this as (ExtPrgrm) is too far
+  je ExtPrgrm    
   
 jmp mainscreen
 
 ExtPrgrm:
-hlt
+movecursor 0E19h
+mov ah,4ch
+int 21h
 
 chatmode:
 ;chatting code
