@@ -92,16 +92,39 @@ chatmode:
 ;chatting code
 ; ............
 
-
 gamemode:
-;switching to video mode
-  MOV    AX, 4F02H
-  MOV    BX,101H
-  INT    10H
-;STARTING GAME
+    ; STARTING GAME MODE
+    MOV    AX, 4F02H
+    MOV    BX, 101H
+    INT    10H
+
+
+    ; Set Cursor Position
+    MOV    AH, 2H
+    MOV    BH, 0 
+    MOV    DH, 1Ah 
+    MOV    DL, 2h
+    INT    10H
+
+    ; Write string at the specified position
+    MOV    AH, 9H
+    LEA    DX, username1 ; Load the offset of the string
+    INT    21H
+
+    ; Set Cursor Position
+    MOV    AH, 2H
+    MOV    BH, 0 
+    MOV    DH, 1Ch 
+    MOV    DL, 2h
+    INT    10H
+
+    MOV    AH, 9H
+    LEA    DX, username2 ; Load the offset of the string
+    INT    21H
+
     ;draw line for the status bar
     mov cx,0
-    mov dx,400 ;y-axis
+    mov dx,405 ;y-axis
     mov al,0fh
     mov ah,0CH
     back:int 10h
