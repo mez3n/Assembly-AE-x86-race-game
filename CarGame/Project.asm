@@ -108,7 +108,7 @@ gamemode:
 
     ; Write string at the specified position
     MOV    AH, 9H
-    LEA    DX, username1 ; Load the offset of the string
+    LEA    DX, username1+2 ; Load the offset of the string
     INT    21H
 
     ; Set Cursor Position
@@ -119,7 +119,7 @@ gamemode:
     INT    10H
 
     MOV    AH, 9H
-    LEA    DX, username2 ; Load the offset of the string
+    LEA    DX, username2+2 ; Load the offset of the string
     INT    21H
 
     ;draw line for the status bar
