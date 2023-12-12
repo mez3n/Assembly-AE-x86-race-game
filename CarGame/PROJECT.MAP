@@ -1,9 +1,9 @@
 
  Start  Stop   Length Name               Class
 
- 00000H 00F0EH 00F0FH DATA               
- 00F10H 0132CH 0041DH CODE               
+ 00000H 00F27H 00F28H DATA               
+ 00F30H 01407H 004D8H CODE               
 
-Program entry point at 00F1:0000
+Program entry point at 00F3:0000
 Warning: No stack
 

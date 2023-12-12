@@ -8,6 +8,13 @@ user1mess DB 'Please Enter user1 name: $'
 user2mess DB 'Please Enter user2 name: $'
 username1 db 15,?,15 DUP('$')
 username2 db 15,?,15 DUP('$')
+powerUps1 db 10 dup('$') ;array of poerups for user 1
+powerUps2 db 10 dup('$') ;array of poerups for user 2
+ptimer db ?
+speedUp db 0h
+speedDown db 1h
+obstacleBehind db 2h
+passObstacle db 3h
 CUR_X DW  ?  ; ACTIVE VARIABLES TO BE USED IN FUNCTIONS
 CUR_Y DW  ?
 FIRST_RECTANGLE_X DW 60  ;initial positions of the FIRST CAR
@@ -131,6 +138,12 @@ gamemode:
     inc cx
     cmp cx,640 ;x-axis
     jnz back
+    ;set cursor at (0,0)
+    MOV    AH, 2H
+    MOV    BH, 0 
+    MOV    DH, 0h 
+    MOV    DL, 0h
+    INT    10H
     ;Above status bar
     mov ah, 03Dh
     mov al, 0 ; open attribute: 0 - read-only, 1 - write-only, 2 -read&write
@@ -170,7 +183,7 @@ gamemode:
     INT 21H
 
 
-     mov ah, 03Dh
+    mov ah, 03Dh
     mov al, 0 ; open attribute: 0 - read-only, 1 - write-only, 2 -read&write
     mov dx, offset FILE_NAME4 ; ASCIIZ filename to open
     int 21h
@@ -181,12 +194,70 @@ gamemode:
     int 21h
     mov ah, 3Eh         ; DOS function: close file
     INT 21H
+loadPowerUpTimer:
+mov ah, 2Ch
+int 21h
+mov ptimer,dh
 GAME:
 ; reading keys
+
+
 MOV CX ,09FFFH ; BUFFER FOR READING KEYS THE LESS THIS NUMBER IS THE FASTER THE GAME
 BUFFER:
 IN AL ,60H
 
+;check if enter or space is pressed to activate powerups
+push ax
+cmp al,0Dh ; enter for user1
+je activateP1ifNempty
+cmp al,20h ; space for user2
+je activateP2ifNempty
+jmp skipActivationofPowerUpsorFinished
+
+
+activateP1ifNempty:
+mov si,offset powerUps1
+mov ah,[si]
+cmp ah,'$'
+jne activate
+jmp skipActivationofPowerUpsorFinished
+activate:
+cmp ah,'+'
+je incSpeed1
+cmp ah,'-'
+je decSpeed2
+cmp ah,'o'
+je addObs
+cmp ah,'p'
+je passObs
+incSpeed1:
+; inc speed 1
+
+jmp ActivationofPowerUpsorFinished
+decSpeed2:
+; dec speed 2
+
+
+jmp ActivationofPowerUpsorFinished
+addObs:
+; add obs
+
+
+jmp ActivationofPowerUpsorFinished
+passObs:
+; pass obs
+
+ActivationofPowerUpsorFinished:
+inc si
+jmp skipActivationofPowerUpsorFinished
+
+
+
+activateP2ifNempty:
+
+
+skipActivationofPowerUpsorFinished:
+pop ax
 ;marking pressed
 CMP AL,48H
 JNE MARK_LEFT
@@ -384,10 +455,82 @@ MOV CUR_Y,DX
 CALL DRAW_NEW_LOCATION_SECOND
 
 
+; Set up the timer
+mov ah, 2Ch
+int 21h
+; Check if 10 seconds have passed
+sub dh, ptimer
+jns no_negative ; Jump if not negative
+add dh, 100 ; Adjust the value to get the correct difference
+no_negative:
+; Check if the difference is less than 10
+cmp dh, 14h ;print each 20 seconds
+jl GAME ; Jump back if less than 10
+
+
+;Generate a random number
+MOV AH, 2Ch               ; Get system time
+INT 21h
+MOV ax, DX       ; Store milliseconds into ax register
+and ax,000fh     ; decreasing range of ax to be (0 to 15)
+mov bl,4         ; Set range of random numbers (0 to 3)
+div bl           ; ah = ax % 3, where ax = dx, ah belongs to {0,1,2,3}
+
+;load powerUp
+cmp ah,0h
+je addincSpeed
+cmp ah,1h
+je addDecSpeed
+cmp ah,2h
+je addObsBehind
+cmp ah,3h
+je addPassObs
+
+addincSpeed:
+;set powerUp postion
+;........code
 
 
 
-JMP GAME
+mov ah, 02h ; Print character to console
+mov dl, '+' ; Character to print
+int 21h
+JMP loadPowerUpTimer
+
+
+addDecSpeed:
+;set powerUp postion
+;........code
+
+
+
+mov ah, 02h ; Print character to console
+mov dl, '-' ; Character to print
+int 21h
+JMP loadPowerUpTimer
+
+
+addObsBehind:
+;set powerUp postion
+;......code
+
+
+mov ah, 02h ; Print character to console
+mov dl, 'o' ; Character to print
+int 21h
+JMP loadPowerUpTimer
+
+
+addPassObs:
+;set powerUp postion
+;......code
+
+
+mov ah, 02h ; Print character to console
+mov dl, 'p' ; Character to print
+int 21h
+JMP loadPowerUpTimer
+
 
 MAIN ENDP
 
