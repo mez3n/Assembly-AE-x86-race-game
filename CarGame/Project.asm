@@ -15,6 +15,9 @@ speedUp db 0h
 speedDown db 1h
 obstacleBehind db 2h
 passObstacle db 3h
+dim1 dw 10
+dim2 dw 10
+storex dw ?
 CUR_X DW  ?  ; ACTIVE VARIABLES TO BE USED IN FUNCTIONS
 CUR_Y DW  ?
 FIRST_RECTANGLE_X DW 60  ;initial positions of the FIRST CAR
@@ -132,7 +135,7 @@ gamemode:
     ;draw line for the status bar
     mov cx,0
     mov dx,405 ;y-axis
-    mov al,0fh
+    mov al,0fh ;white
     mov ah,0CH
     back:int 10h
     inc cx
@@ -258,6 +261,10 @@ activateP2ifNempty:
 
 skipActivationofPowerUpsorFinished:
 pop ax
+
+
+
+
 ;marking pressed
 CMP AL,48H
 JNE MARK_LEFT
@@ -486,51 +493,177 @@ je addObsBehind
 cmp ah,3h
 je addPassObs
 
-addincSpeed:
-;set powerUp postion
-;........code
+addincSpeed:;green
+;Generate a random x-postion
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    mov cx,dx
+    and cx,0fffh
+    check1:
+    cmp cx,640
+    jl skipsub1
+    sub cx,640    
+    jmp check1
+    skipsub1:
+    ;Generate a random y-postion
+    push cx
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    and dx,0fffh
+    check2:
+    cmp dx,405
+    jl skipsub2
+    sub dx,600    
+    jmp check2
+    skipsub2:
+    pop cx
+    ;draw rect
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 04h 
+    back1:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne back1
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne back1
+    mov dim1,10
+    mov dim2,10
 
-
-
-mov ah, 02h ; Print character to console
-mov dl, '+' ; Character to print
-int 21h
 JMP loadPowerUpTimer
 
 
-addDecSpeed:
-;set powerUp postion
-;........code
-
-
-
-mov ah, 02h ; Print character to console
-mov dl, '-' ; Character to print
-int 21h
+addDecSpeed: ;red
+;Generate a random x-postion
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    mov cx,dx
+    and cx,0fffh
+    check3:
+    cmp cx,640
+    jl skipsub3
+    sub cx,640    
+    jmp check3
+    skipsub3:
+    ;Generate a random y-postion
+    push cx
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    and dx,0fffh
+    check4:
+    cmp dx,405
+    jl skipsub4
+    sub dx,600    
+    jmp check4
+    skipsub4:
+    pop cx
+    ;draw rect
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 0Ch 
+    back2:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne back2
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne back2
+    mov dim1,10
+    mov dim2,10
 JMP loadPowerUpTimer
 
 
-addObsBehind:
-;set powerUp postion
-;......code
-
-
-mov ah, 02h ; Print character to console
-mov dl, 'o' ; Character to print
-int 21h
+addObsBehind:;blue
+;Generate a random x-postion
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    mov cx,dx
+    and cx,0fffh
+    check5:
+    cmp cx,640
+    jl skipsub5
+    sub cx,640    
+    jmp check5
+    skipsub5:
+    ;Generate a random y-postion
+    push cx
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    and dx,0fffh
+    check6:
+    cmp dx,405
+    jl skipsub6
+    sub dx,600    
+    jmp check6
+    skipsub6:
+    pop cx
+    ;draw rect
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 03h 
+    back3:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne back3
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne back3
+    mov dim1,10
+    mov dim2,10
 JMP loadPowerUpTimer
 
 
-addPassObs:
-;set powerUp postion
-;......code
-
-
-mov ah, 02h ; Print character to console
-mov dl, 'p' ; Character to print
-int 21h
-JMP loadPowerUpTimer
-
+addPassObs:;yellow
+;Generate a random x-postion
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    mov cx,dx
+    and cx,0fffh
+    check7:
+    cmp cx,640
+    jl skipsub7
+    sub cx,640    
+    jmp check7
+    skipsub7:
+    ;Generate a random y-postion
+    push cx
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    and dx,0fffh
+    check8:
+    cmp dx,405
+    jl skipsub8
+    sub dx,600    
+    jmp check8
+    skipsub8:
+    pop cx
+    ;draw rect
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 0Eh 
+    back4:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne back4
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne back4
+    mov dim1,10
+    mov dim2,10
+    JMP loadPowerUpTimer
 
 MAIN ENDP
 
