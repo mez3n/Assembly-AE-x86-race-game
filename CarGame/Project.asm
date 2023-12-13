@@ -102,6 +102,7 @@ int 21h
 chatmode:
 ;chatting code
 ; ............
+jmp mainscreen
 
 gamemode:
     ; STARTING GAME MODE
