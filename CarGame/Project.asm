@@ -8,6 +8,16 @@ user1mess DB 'Please Enter user1 name: $'
 user2mess DB 'Please Enter user2 name: $'
 username1 db 15,?,15 DUP('$')
 username2 db 15,?,15 DUP('$')
+powerUps1 db 10 dup('$') ;array of poerups for user 1
+powerUps2 db 10 dup('$') ;array of poerups for user 2
+ptimer db ?
+speedUp db 0h
+speedDown db 1h
+obstacleBehind db 2h
+passObstacle db 3h
+dim1 dw 10
+dim2 dw 10
+storex dw ?
 CUR_X DW  ?  ; ACTIVE VARIABLES TO BE USED IN FUNCTIONS
 CUR_Y DW  ?
 FIRST_RECTANGLE_X DW 60  ;initial positions of the FIRST CAR
@@ -78,35 +88,66 @@ mainscreen:
   cmp ah, 3Bh    ; F1 key
   je chatmode
   cmp ah, 3Ch    ; F2 key
-  je gamemode
+  je gamemode    ;note we may want to handle this as (gamemode) will be too far
   cmp al, 1Bh    ; Esc key
-  je ExtPrgrm    ;note we want to handle this as (ExtPrgrm) is too far
+  je ExtPrgrm    
   
 jmp mainscreen
 
 ExtPrgrm:
-hlt
+movecursor 0E19h
+mov ah,4ch
+int 21h
 
 chatmode:
 ;chatting code
 ; ............
 
-
 gamemode:
-;switching to video mode
-  MOV    AX, 4F02H
-  MOV    BX,101H
-  INT    10H
-;STARTING GAME
+    ; STARTING GAME MODE
+    MOV    AX, 4F02H
+    MOV    BX, 101H
+    INT    10H
+
+
+    ; Set Cursor Position
+    MOV    AH, 2H
+    MOV    BH, 0 
+    MOV    DH, 1Ah 
+    MOV    DL, 2h
+    INT    10H
+
+    ; Write string at the specified position
+    MOV    AH, 9H
+    LEA    DX, username1+2 ; Load the offset of the string
+    INT    21H
+
+    ; Set Cursor Position
+    MOV    AH, 2H
+    MOV    BH, 0 
+    MOV    DH, 1Ch 
+    MOV    DL, 2h
+    INT    10H
+
+    MOV    AH, 9H
+    LEA    DX, username2+2 ; Load the offset of the string
+    INT    21H
+
     ;draw line for the status bar
     mov cx,0
-    mov dx,400 ;y-axis
-    mov al,0fh
+    mov dx,405 ;y-axis
+    mov al,0fh ;white
     mov ah,0CH
     back:int 10h
     inc cx
     cmp cx,640 ;x-axis
     jnz back
+    ;set cursor at (0,0)
+    MOV    AH, 2H
+    MOV    BH, 0 
+    MOV    DH, 0h 
+    MOV    DL, 0h
+    INT    10H
     ;Above status bar
     mov ah, 03Dh
     mov al, 0 ; open attribute: 0 - read-only, 1 - write-only, 2 -read&write
@@ -146,7 +187,7 @@ gamemode:
     INT 21H
 
 
-     mov ah, 03Dh
+    mov ah, 03Dh
     mov al, 0 ; open attribute: 0 - read-only, 1 - write-only, 2 -read&write
     mov dx, offset FILE_NAME4 ; ASCIIZ filename to open
     int 21h
@@ -157,11 +198,73 @@ gamemode:
     int 21h
     mov ah, 3Eh         ; DOS function: close file
     INT 21H
+loadPowerUpTimer:
+mov ah, 2Ch
+int 21h
+mov ptimer,dh
 GAME:
 ; reading keys
+
+
 MOV CX ,09FFFH ; BUFFER FOR READING KEYS THE LESS THIS NUMBER IS THE FASTER THE GAME
 BUFFER:
 IN AL ,60H
+
+;check if enter or space is pressed to activate powerups
+push ax
+cmp al,0Dh ; enter for user1
+je activateP1ifNempty
+cmp al,20h ; space for user2
+je activateP2ifNempty
+jmp skipActivationofPowerUpsorFinished
+
+
+activateP1ifNempty:
+mov si,offset powerUps1
+mov ah,[si]
+cmp ah,'$'
+jne activate
+jmp skipActivationofPowerUpsorFinished
+activate:
+cmp ah,'+'
+je incSpeed1
+cmp ah,'-'
+je decSpeed2
+cmp ah,'o'
+je addObs
+cmp ah,'p'
+je passObs
+incSpeed1:
+; inc speed 1
+
+jmp ActivationofPowerUpsorFinished
+decSpeed2:
+; dec speed 2
+
+
+jmp ActivationofPowerUpsorFinished
+addObs:
+; add obs
+
+
+jmp ActivationofPowerUpsorFinished
+passObs:
+; pass obs
+
+ActivationofPowerUpsorFinished:
+inc si
+jmp skipActivationofPowerUpsorFinished
+
+
+
+activateP2ifNempty:
+
+
+skipActivationofPowerUpsorFinished:
+pop ax
+
+
+
 
 ;marking pressed
 CMP AL,48H
@@ -368,10 +471,208 @@ MOV CUR_Y,DX
 CALL DRAW_NEW_LOCATION_SECOND
 
 
+; Set up the timer
+mov ah, 2Ch
+int 21h
+; Check if 10 seconds have passed
+sub dh, ptimer
+jns no_negative ; Jump if not negative
+add dh, 100 ; Adjust the value to get the correct difference
+no_negative:
+; Check if the difference is less than 10
+cmp dh, 14h ;print each 20 seconds
+jl GAME ; Jump back if less than 10
 
 
+;Generate a random number
+MOV AH, 2Ch               ; Get system time
+INT 21h
+MOV ax, DX       ; Store milliseconds into ax register
+and ax,000fh     ; decreasing range of ax to be (0 to 15)
+mov bl,4         ; Set range of random numbers (0 to 3)
+div bl           ; ah = ax % 3, where ax = dx, ah belongs to {0,1,2,3}
 
-JMP GAME
+;load powerUp
+cmp ah,0h
+je addincSpeed
+cmp ah,1h
+je addDecSpeed
+cmp ah,2h
+je addObsBehind
+cmp ah,3h
+je addPassObs
+
+addincSpeed:;green
+;Generate a random x-postion
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    mov cx,dx
+    and cx,0fffh
+    check1:
+    cmp cx,640
+    jl skipsub1
+    sub cx,640    
+    jmp check1
+    skipsub1:
+    ;Generate a random y-postion
+    push cx
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    and dx,0fffh
+    check2:
+    cmp dx,405
+    jl skipsub2
+    sub dx,600    
+    jmp check2
+    skipsub2:
+    pop cx
+    ;draw rect
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 04h 
+    back1:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne back1
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne back1
+    mov dim1,10
+    mov dim2,10
+
+JMP loadPowerUpTimer
+
+
+addDecSpeed: ;red
+;Generate a random x-postion
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    mov cx,dx
+    and cx,0fffh
+    check3:
+    cmp cx,640
+    jl skipsub3
+    sub cx,640    
+    jmp check3
+    skipsub3:
+    ;Generate a random y-postion
+    push cx
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    and dx,0fffh
+    check4:
+    cmp dx,405
+    jl skipsub4
+    sub dx,600    
+    jmp check4
+    skipsub4:
+    pop cx
+    ;draw rect
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 0Ch 
+    back2:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne back2
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne back2
+    mov dim1,10
+    mov dim2,10
+JMP loadPowerUpTimer
+
+
+addObsBehind:;blue
+;Generate a random x-postion
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    mov cx,dx
+    and cx,0fffh
+    check5:
+    cmp cx,640
+    jl skipsub5
+    sub cx,640    
+    jmp check5
+    skipsub5:
+    ;Generate a random y-postion
+    push cx
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    and dx,0fffh
+    check6:
+    cmp dx,405
+    jl skipsub6
+    sub dx,600    
+    jmp check6
+    skipsub6:
+    pop cx
+    ;draw rect
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 03h 
+    back3:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne back3
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne back3
+    mov dim1,10
+    mov dim2,10
+JMP loadPowerUpTimer
+
+
+addPassObs:;yellow
+;Generate a random x-postion
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    mov cx,dx
+    and cx,0fffh
+    check7:
+    cmp cx,640
+    jl skipsub7
+    sub cx,640    
+    jmp check7
+    skipsub7:
+    ;Generate a random y-postion
+    push cx
+    MOV AH, 2Ch               ; Get system time
+    INT 21h
+    and dx,0fffh
+    check8:
+    cmp dx,405
+    jl skipsub8
+    sub dx,600    
+    jmp check8
+    skipsub8:
+    pop cx
+    ;draw rect
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 0Eh 
+    back4:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne back4
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne back4
+    mov dim1,10
+    mov dim2,10
+    JMP loadPowerUpTimer
 
 MAIN ENDP
 
