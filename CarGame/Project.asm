@@ -10,6 +10,8 @@ username1 db 15,?,15 DUP('$')
 username2 db 15,?,15 DUP('$')
 powerUps1 db 10 dup('$') ;array of poerups for user 1
 powerUps2 db 10 dup('$') ;array of poerups for user 2
+maxp1 db 0
+maxp2 db 0
 ptimer db ?
 speedUp db 0h
 speedDown db 1h
@@ -18,6 +20,16 @@ passObstacle db 3h
 dim1 dw 10
 dim2 dw 10
 storex dw ?
+checkxpix dw 36
+checkypix dw 36
+puIdx1 dw 0
+puIdx2 dw 0
+startx dw ?
+starty dw ?
+storey dw ?
+isEnter1 db 1 ; bool value to check
+isEnter2 db 1 ; bool value to check
+
 CUR_X DW  ?  ; ACTIVE VARIABLES TO BE USED IN FUNCTIONS
 CUR_Y DW  ?
 FIRST_RECTANGLE_X DW 60  ;initial positions of the FIRST CAR
@@ -88,7 +100,7 @@ mainscreen:
   cmp ah, 3Bh    ; F1 key
   je chatmode
   cmp ah, 3Ch    ; F2 key
-  je gamemode    ;note we may want to handle this as (gamemode) will be too far
+  je gamemode    ; note we may want to handle this as (gamemode) will be too far
   cmp al, 1Bh    ; Esc key
   je ExtPrgrm    
   
@@ -114,7 +126,7 @@ gamemode:
     ; Set Cursor Position
     MOV    AH, 2H
     MOV    BH, 0 
-    MOV    DH, 1Ah 
+    MOV    DH, 15h 
     MOV    DL, 2h
     INT    10H
 
@@ -123,10 +135,12 @@ gamemode:
     LEA    DX, username1+2 ; Load the offset of the string
     INT    21H
 
+    
+
     ; Set Cursor Position
     MOV    AH, 2H
     MOV    BH, 0 
-    MOV    DH, 1Ch 
+    MOV    DH, 19h 
     MOV    DL, 2h
     INT    10H
 
@@ -136,7 +150,7 @@ gamemode:
 
     ;draw line for the status bar
     mov cx,0
-    mov dx,405 ;y-axis
+    mov dx,313 ;y-axis
     mov al,0fh ;white
     mov ah,0CH
     back:int 10h
@@ -263,8 +277,6 @@ activateP2ifNempty:
 
 skipActivationofPowerUpsorFinished:
 pop ax
-
-
 
 
 ;marking pressed
@@ -472,6 +484,439 @@ MOV CUR_Y,DX
 CALL DRAW_NEW_LOCATION_SECOND
 
 
+
+;check every pixel of the car if hits a PU
+cmp maxp1,8
+jne checkfirstcar
+jmp finishChecking1
+
+checkfirstcar:
+mov ah,0Dh
+mov bx,FIRST_RECTANGLE_X
+mov startx,bx
+sub startx,5
+mov bx,FIRST_RECTANGLE_Y
+mov starty,bx
+sub starty,5
+mov cx,startx ;setting x = first x (makes a problem)
+mov dx,starty ;setting y = first y (makes a problem)
+mov storey,dx ;store y value
+mov bx,cx ;store x value to bx
+add checkxpix,cx
+add checkypix,dx
+
+
+;check first row
+checkpix1:
+int 10h ;store color in al
+;check color 0C->red / 04->green / 03->blue / 0E->yellow
+cmp al,01H
+je decs1
+cmp al,04h
+je incs1
+cmp al,03h
+je Addob1
+cmp al,0Eh
+je Passob1
+inc cx
+cmp cx,checkxpix
+jne checkpix1
+
+
+
+;check second column
+checkpix11:
+int 10h ;store color in al
+;check color 0C->red / 04->green / 03->blue / 0E->yellow
+cmp al,01H
+je decs1
+cmp al,04h
+je incs1
+cmp al,03h
+je Addob1
+cmp al,0Eh
+je Passob1
+inc dx
+cmp dx,checkypix
+jne checkpix11
+
+
+
+;check first column at the intial x
+mov cx,bx
+mov dx,storey
+checkpix111:
+int 10h ;store color in al
+;check color 0C->red / 04->green / 03->blue / 0E->yellow
+cmp al,01H
+je decs1
+cmp al,04h
+je incs1
+cmp al,03h
+je Addob1
+cmp al,0Eh
+je Passob1
+;mov cx,bx
+inc dx
+cmp dx,checkypix
+jne checkpix111
+
+
+;check second row
+checkpix1111:
+int 10h ;store color in al
+;check color 0C->red / 04->green / 03->blue / 0E->yellow
+cmp al,01H
+je decs1
+cmp al,04h
+je incs1
+cmp al,03h
+je Addob1
+cmp al,0Eh
+je Passob1
+;mov cx,bx
+inc cx
+cmp cx,checkxpix
+jne checkpix1111
+
+mov isEnter1,1
+jmp finishChecking1
+
+
+decs1:
+cmp isEnter1,1
+je st1
+jmp finishChecking1
+st1:
+;store pu
+mov bx, offset powerUps1   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx1                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], '-'  ; Assign the desired value ('-') to the current element
+inc puIdx1
+
+inc maxp1
+mov isEnter1,0
+jmp finishChecking1
+
+
+incs1:
+cmp isEnter1,1
+je st11
+jmp finishChecking1
+st11:
+;store pu
+mov bx, offset powerUps1   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx1                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], '+'  ; Assign the desired value ('-') to the current element
+mov dl,[di]
+inc puIdx1
+
+
+inc maxp1
+mov isEnter1,0
+jmp finishChecking1
+
+
+Addob1:
+cmp isEnter1,1
+je st111
+jmp finishChecking1
+st111:
+;store pu
+
+mov bx, offset powerUps1   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx1                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], 'o'  ; Assign the desired value ('-') to the current element
+inc puIdx1
+
+;we may use maxp1 instead of puidx1
+
+
+inc maxp1
+mov isEnter1,0
+jmp finishChecking1
+
+
+
+Passob1:
+cmp isEnter1,1
+je st1111
+jmp finishChecking1
+st1111:
+;store pu
+
+mov bx, offset powerUps1   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx1                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], 'p'  ; Assign the desired value ('-') to the current element
+inc puIdx1
+;we may use maxp1 instead of puidx1
+
+
+inc maxp1
+mov isEnter1,0
+
+
+finishChecking1:
+mov checkxpix,40
+mov checkypix,40
+
+    
+
+
+
+cmp maxp2,8
+jne checksecondcar
+jmp finishChecking2
+checksecondcar:
+
+mov ah,0Dh
+mov bx,SECOND_RECTANGLE_X
+mov startx,bx
+sub startx,5
+mov bx,SECOND_RECTANGLE_Y
+mov starty,bx
+sub starty,5
+mov cx,startx ;setting x = first x (makes a problem)
+mov dx,starty ;setting y = first y (makes a problem)
+mov storey,dx ;store y value
+mov bx,cx ;store x value to bx
+add checkxpix,cx
+add checkypix,dx
+
+
+;check first row
+checkpix2:
+int 10h ;store color in al
+;check color 0C->red / 04->green / 03->blue / 0E->yellow
+cmp al,01H
+je decs2
+cmp al,04h
+je incs2
+cmp al,03h
+je Addob2
+cmp al,0Eh
+je Passob2
+inc cx
+cmp cx,checkxpix
+jne checkpix2
+
+
+
+;check second column
+checkpix22:
+int 10h ;store color in al
+;check color 0C->red / 04->green / 03->blue / 0E->yellow
+cmp al,01H
+je decs2
+cmp al,04h
+je incs2
+cmp al,03h
+je Addob2
+cmp al,0Eh
+je Passob2
+inc dx
+cmp dx,checkypix
+jne checkpix22
+
+
+
+;check first column at the intial x
+mov cx,bx
+mov dx,storey
+checkpix222:
+int 10h ;store color in al
+;check color 0C->red / 04->green / 03->blue / 0E->yellow
+cmp al,01H
+je decs2
+cmp al,04h
+je incs2
+cmp al,03h
+je Addob2
+cmp al,0Eh
+je Passob2
+;mov cx,bx
+inc dx
+cmp dx,checkypix
+jne checkpix222
+
+
+;check second row
+checkpix2222:
+int 10h ;store color in al
+;check color 0C->red / 04->green / 03->blue / 0E->yellow
+cmp al,01H
+je decs2
+cmp al,04h
+je incs2
+cmp al,03h
+je Addob2
+cmp al,0Eh
+je Passob2
+inc cx
+cmp cx,checkxpix
+jne checkpix2222
+
+mov isEnter2,1
+jmp finishChecking2
+
+
+decs2:
+cmp isEnter2,1
+je st2
+jmp finishChecking2
+st2:
+;store pu
+mov bx, offset powerUps2   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx2                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], '-'  ; Assign the desired value ('-') to the current element
+inc puIdx2
+;we may use maxp2 instead of puidx2
+
+
+inc maxp2
+mov isEnter2,0
+jmp finishChecking2
+
+
+incs2:
+cmp isEnter2,1
+je st22
+jmp finishChecking2
+st22:
+;store pu
+mov bx, offset powerUps2   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx2                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], '+'  ; Assign the desired value ('-') to the current element
+inc puIdx2
+;we may use maxp2 instead of puidx2
+
+
+inc maxp2
+mov isEnter2,0
+jmp finishChecking2
+
+
+Addob2:
+cmp isEnter2,1
+je st222
+jmp finishChecking2
+st222:
+;store pu
+mov bx, offset powerUps2   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx2                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], 'o'  ; Assign the desired value ('-') to the current element
+inc puIdx2
+;we may use maxp2 instead of puidx2
+
+
+inc maxp2
+mov isEnter2,0
+jmp finishChecking2
+
+
+
+Passob2:
+cmp isEnter2,1
+je st2222
+jmp finishChecking2
+st2222:
+;store pu
+mov bx, offset powerUps2   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx2                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], 'p'  ; Assign the desired value ('-') to the current element
+inc puIdx2
+;we may use maxp2 instead of puidx2
+
+
+inc maxp2
+mov isEnter2,0
+
+finishChecking2:
+mov checkxpix,40
+mov checkypix,40
+
+;print PUs
+;delete line
+mov ax,0600h
+mov bh,07
+mov cx,0216h
+mov dx,0ff15h
+int 10h
+
+; Set Cursor Position user1
+    MOV    AH, 2H
+    MOV    BH, 0 
+    MOV    DH, 16h 
+    MOV    DL, 2h
+    INT    10H
+
+
+    ;print new line (array1)
+    mov cx,0
+    cntl:
+    mov bx,offset powerUps1
+    add bx,cx
+    mov dl, [bx]  
+    cmp dl,'$'
+    je finishprint1              ; Set the index value to the CX register
+    mov ah, 02h        ; Set AH=02h to set the print function
+    int 21h            ; Print the value stored in DL
+    inc cx
+    jmp cntl
+
+finishprint1:
+
+;second user
+
+;delete line
+mov ax,0600h
+mov bh,07
+mov cx,021Ah
+mov dx,0ff15h
+int 10h
+
+; Set Cursor Position user1
+    MOV    AH, 2H
+    MOV    BH, 0 
+    MOV    DH, 1Ah 
+    MOV    DL, 2h
+    INT    10H
+
+
+    ;print new line (array1)
+    mov cx,0
+    cntl2:
+    mov bx,offset powerUps2
+    add bx,cx
+    mov dl, [bx]  
+    cmp dl,'$'
+    je finishprint2              ; Set the index value to the CX register
+    mov ah, 02h        ; Set AH=02h to set the print function
+    int 21h            ; Print the value stored in DL
+    inc cx
+    jmp cntl2
+
+finishprint2:
+
+
+
+
 ; Set up the timer
 mov ah, 2Ch
 int 21h
@@ -521,9 +966,9 @@ addincSpeed:;green
     INT 21h
     and dx,0fffh
     check2:
-    cmp dx,405
+    cmp dx,310
     jl skipsub2
-    sub dx,600    
+    sub dx,650    
     jmp check2
     skipsub2:
     pop cx
@@ -565,9 +1010,9 @@ addDecSpeed: ;red
     INT 21h
     and dx,0fffh
     check4:
-    cmp dx,405
+    cmp dx,310
     jl skipsub4
-    sub dx,600    
+    sub dx,650    
     jmp check4
     skipsub4:
     pop cx
@@ -576,7 +1021,7 @@ addDecSpeed: ;red
     add dim2,dx
     mov storex,cx
     mov ah, 0Ch ; Set color attribute
-    mov al, 0Ch 
+    mov al, 01h 
     back2:int 10h
     inc cx
     cmp cx,dim1 ; x-axis width+x-position width=10
@@ -608,9 +1053,9 @@ addObsBehind:;blue
     INT 21h
     and dx,0fffh
     check6:
-    cmp dx,405
+    cmp dx,310
     jl skipsub6
-    sub dx,600    
+    sub dx,650    
     jmp check6
     skipsub6:
     pop cx
@@ -651,9 +1096,9 @@ addPassObs:;yellow
     INT 21h
     and dx,0fffh
     check8:
-    cmp dx,405
+    cmp dx,310
     jl skipsub8
-    sub dx,600    
+    sub dx,650    
     jmp check8
     skipsub8:
     pop cx
@@ -679,6 +1124,118 @@ MAIN ENDP
 
 
 ;========================= PROCEDUERS=============================================
+DBR1 PROC
+mov checkxpix,40
+mov checkypix,40
+mov ah,0Ch
+mov al,00h
+mov bx,FIRST_RECTANGLE_X
+mov startx,bx
+sub startx,5
+mov bx,FIRST_RECTANGLE_Y
+mov starty,bx
+sub starty,5
+mov cx,startx ;setting x = first x (makes a problem)
+mov dx,starty ;setting y = first y (makes a problem)
+mov storey,dx ;store y value
+mov bx,cx ;store x value to bx
+add checkxpix,cx
+add checkypix,dx
+;check first row
+d1:
+int 10h 
+inc cx
+cmp cx,checkxpix
+jne d1
+
+
+
+;draw second column
+d11:
+int 10h ;store color in al
+inc dx
+cmp dx,checkypix
+jne d11
+
+
+
+;check first column at the intial x
+mov cx,bx
+mov dx,storey
+d111:
+int 10h ;store color in al
+inc dx
+cmp dx,checkypix
+jne d111
+
+
+;check second row
+d1111:
+int 10h ;store color in al
+inc cx
+cmp cx,checkxpix
+jne d1111
+    ret
+DBR1 ENDP
+
+
+DBR2 PROC
+mov checkxpix,40
+mov checkypix,40
+mov ah,0Ch
+mov al,00h
+mov bx,SECOND_RECTANGLE_X
+mov startx,bx
+sub startx,5
+mov bx,SECOND_RECTANGLE_Y
+mov starty,bx
+sub starty,5
+mov cx,startx ;setting x = first x (makes a problem)
+mov dx,starty ;setting y = first y (makes a problem)
+mov storey,dx ;store y value
+mov bx,cx ;store x value to bx
+add checkxpix,cx
+add checkypix,dx
+;check first row
+d2:
+int 10h 
+inc cx
+cmp cx,checkxpix
+jne d2
+
+
+
+;draw second column
+d22:
+int 10h ;store color in al
+inc dx
+cmp dx,checkypix
+jne d22
+
+
+
+;check first column at the intial x
+mov cx,bx
+mov dx,storey
+d222:
+int 10h ;store color in al
+inc dx
+cmp dx,checkypix
+jne d222
+
+
+;check second row
+d2222:
+int 10h ;store color in al
+inc cx
+cmp cx,checkxpix
+jne d2222
+    ret
+DBR2 ENDP
+
+
+
+
 DRAW_NEW_LOCATION_FIRST PROC 
 MOV AX, FIRST_RECTANGLE_X
 MOV BX,FIRST_RECTANGLE_Y
