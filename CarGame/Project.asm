@@ -509,12 +509,12 @@ add checkypix,dx
 ;check first row
 checkpix1:
 int 10h ;store color in al
-;check color 0C->red / 04->green / 03->blue / 0E->yellow
-cmp al,01H
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
 je decs1
-cmp al,04h
+cmp al,02h
 je incs1
-cmp al,03h
+cmp al,01h
 je Addob1
 cmp al,0Eh
 je Passob1
@@ -527,12 +527,12 @@ jne checkpix1
 ;check second column
 checkpix11:
 int 10h ;store color in al
-;check color 0C->red / 04->green / 03->blue / 0E->yellow
-cmp al,01H
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
 je decs1
-cmp al,04h
+cmp al,02h
 je incs1
-cmp al,03h
+cmp al,01h
 je Addob1
 cmp al,0Eh
 je Passob1
@@ -547,12 +547,12 @@ mov cx,bx
 mov dx,storey
 checkpix111:
 int 10h ;store color in al
-;check color 0C->red / 04->green / 03->blue / 0E->yellow
-cmp al,01H
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
 je decs1
-cmp al,04h
+cmp al,02h
 je incs1
-cmp al,03h
+cmp al,01h
 je Addob1
 cmp al,0Eh
 je Passob1
@@ -565,12 +565,12 @@ jne checkpix111
 ;check second row
 checkpix1111:
 int 10h ;store color in al
-;check color 0C->red / 04->green / 03->blue / 0E->yellow
-cmp al,01H
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
 je decs1
-cmp al,04h
+cmp al,02h
 je incs1
-cmp al,03h
+cmp al,01h
 je Addob1
 cmp al,0Eh
 je Passob1
@@ -695,12 +695,12 @@ add checkypix,dx
 ;check first row
 checkpix2:
 int 10h ;store color in al
-;check color 0C->red / 04->green / 03->blue / 0E->yellow
-cmp al,01H
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
 je decs2
-cmp al,04h
+cmp al,02h
 je incs2
-cmp al,03h
+cmp al,01h
 je Addob2
 cmp al,0Eh
 je Passob2
@@ -713,12 +713,12 @@ jne checkpix2
 ;check second column
 checkpix22:
 int 10h ;store color in al
-;check color 0C->red / 04->green / 03->blue / 0E->yellow
-cmp al,01H
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
 je decs2
-cmp al,04h
+cmp al,02h
 je incs2
-cmp al,03h
+cmp al,01h
 je Addob2
 cmp al,0Eh
 je Passob2
@@ -733,16 +733,15 @@ mov cx,bx
 mov dx,storey
 checkpix222:
 int 10h ;store color in al
-;check color 0C->red / 04->green / 03->blue / 0E->yellow
-cmp al,01H
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
 je decs2
-cmp al,04h
+cmp al,02h
 je incs2
-cmp al,03h
+cmp al,01h
 je Addob2
 cmp al,0Eh
 je Passob2
-;mov cx,bx
 inc dx
 cmp dx,checkypix
 jne checkpix222
@@ -751,12 +750,12 @@ jne checkpix222
 ;check second row
 checkpix2222:
 int 10h ;store color in al
-;check color 0C->red / 04->green / 03->blue / 0E->yellow
-cmp al,01H
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
 je decs2
-cmp al,04h
+cmp al,02h
 je incs2
-cmp al,03h
+cmp al,01h
 je Addob2
 cmp al,0Eh
 je Passob2
@@ -947,7 +946,7 @@ cmp ah,2h
 je addObsBehind
 cmp ah,3h
 je addPassObs
-
+;check color 04->red / 02->green / 01->blue / 0E->yellow
 addincSpeed:;green
 ;Generate a random x-postion
     MOV AH, 2Ch               ; Get system time
@@ -977,7 +976,7 @@ addincSpeed:;green
     add dim2,dx
     mov storex,cx
     mov ah, 0Ch ; Set color attribute
-    mov al, 04h 
+    mov al, 02h 
     back1:int 10h
     inc cx
     cmp cx,dim1 ; x-axis width+x-position width=10
@@ -990,7 +989,7 @@ addincSpeed:;green
     mov dim2,10
 
 JMP loadPowerUpTimer
-
+;check color 04->red / 02->green / 01->blue / 0E->yellow
 
 addDecSpeed: ;red
 ;Generate a random x-postion
@@ -1021,7 +1020,7 @@ addDecSpeed: ;red
     add dim2,dx
     mov storex,cx
     mov ah, 0Ch ; Set color attribute
-    mov al, 01h 
+    mov al, 04h 
     back2:int 10h
     inc cx
     cmp cx,dim1 ; x-axis width+x-position width=10
@@ -1034,7 +1033,7 @@ addDecSpeed: ;red
     mov dim2,10
 JMP loadPowerUpTimer
 
-
+;check color 04->red / 02->green / 01->blue / 0E->yellow
 addObsBehind:;blue
 ;Generate a random x-postion
     MOV AH, 2Ch               ; Get system time
@@ -1064,7 +1063,7 @@ addObsBehind:;blue
     add dim2,dx
     mov storex,cx
     mov ah, 0Ch ; Set color attribute
-    mov al, 03h 
+    mov al, 01h 
     back3:int 10h
     inc cx
     cmp cx,dim1 ; x-axis width+x-position width=10
