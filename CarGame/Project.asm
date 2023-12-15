@@ -377,12 +377,6 @@ mov pi1,dh
 mov MAX_SPEED1,20
 mov activateinc1Speed,1
 
-
-mov ah,02h
-mov dl,'d'
-int 21h  
-
-
 jmp ActivationofPowerUps1orFinished
 decSpeed2:
 ; dec speed 2
