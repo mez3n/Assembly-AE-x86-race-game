@@ -17,6 +17,10 @@ speedUp db 0h
 speedDown db 1h
 obstacleBehind db 2h
 passObstacle db 3h
+;activepass1 db 0
+;activepass2 db 0
+pass1cnt db 0
+pass2cnt db 0
 dim1 dw 10
 dim2 dw 10
 storex dw ?
@@ -35,6 +39,8 @@ activateinc2Speed db 0
 activatedec2Speed db 0
 pi1 db ?
 pi2 db ?
+pi11 db ?
+pi22 db ?
 chp db 0
 chr db 0
 morz db ? ;0->m / 1->z
@@ -396,17 +402,22 @@ mov activateinc1Speed,1
 jmp skipActivationofPowerUpsorFinished
 decSpeed2:
 ; dec speed 2
-
+mov ah, 2Ch
+int 21h
+mov pi11,dh
+mov MAX_SPEED2,5 ;what is the speed is more than 5 already
+mov activatedec1Speed,1
 
 jmp skipActivationofPowerUpsorFinished
 addObs:
 ; add obs
-
+CALL DBR1
 
 jmp skipActivationofPowerUpsorFinished
 passObs:
 ; pass obs
-
+; mov activepass1,1
+inc pass1cnt
 ;ActivationofPowerUps1orFinished:
 jmp skipActivationofPowerUpsorFinished
 
@@ -441,18 +452,20 @@ mov activateinc2Speed,1
 
 jmp skipActivationofPowerUpsorFinished
 decSpeed1:
-
+mov ah, 2Ch
+int 21h
+mov pi22,dh ; set timer
+mov MAX_SPEED1,5 ;what is the speed is more than 5 already
+mov activatedec2Speed,1
 
 jmp skipActivationofPowerUpsorFinished
 addObs2:
-
+call DBR2
 
 jmp skipActivationofPowerUpsorFinished
 passObs2:
-
-;ActivationofPowerUps2orFinished:
-;jmp skipActivationofPowerUpsorFinished
-
+;mov activepass2,1
+inc pass2cnt
 
 
 skipActivationofPowerUpsorFinished:
@@ -480,7 +493,7 @@ mov activateinc1Speed,0
 
 skipi1:
 
-
+;check the inc in second car
 cmp activateinc2Speed,0
 je skipi2
 ; Set up the timer
@@ -500,8 +513,66 @@ mov activateinc2Speed,0
 
 skipi2:
 
+;check dec in second car
+cmp activatedec1Speed,0
+je skipi3
+; Set up the timer
+mov ah, 2Ch
+int 21h
+; Check if 5 seconds have passed
+sub dh, pi11
+jns no_negativei3 ; Jump if not negative
+add dh, 100 ; Adjust the value to get the correct difference
+no_negativei3:
+; Check if the difference is less than 5
+cmp dh, 05h ;print each 5 seconds
+jl skipi3 ; Jump back if less than 5
+mov MAX_SPEED2,10
+mov activatedec1Speed,0
 
 
+skipi3:
+
+;check dec in first car
+cmp activatedec2Speed,0
+je skipi4
+; Set up the timer
+mov ah, 2Ch
+int 21h
+; Check if 5 seconds have passed
+sub dh, pi22
+jns no_negativei4 ; Jump if not negative
+add dh, 100 ; Adjust the value to get the correct difference
+no_negativei4:
+; Check if the difference is less than 5
+cmp dh, 05h ;print each 5 seconds
+jl skipi4 ; Jump back if less than 5
+mov MAX_SPEED1,10
+mov activatedec2Speed,0
+
+
+skipi4:
+
+;check the number of activated pass obs for car 1
+cmp pass1cnt,0
+je skip5
+;check if it hits an obs then pass it
+
+
+
+dec pass1cnt
+skip5:
+
+
+;check the number of activated pass obs for car 2
+cmp pass2cnt,0
+je skip6
+;check if it hits an obs then pass it
+
+
+
+dec pass2cnt
+skip6:
 
 ;deleting the old rectangle
 DELETE_OLD:
@@ -1267,111 +1338,47 @@ MAIN ENDP
 
 ;========================= PROCEDUERS=============================================
 DBR1 PROC
-mov checkxpix,40
-mov checkypix,40
-mov ah,0Ch
-mov al,00h
-mov bx,FIRST_RECTANGLE_X
-mov startx,bx
-sub startx,5
-mov bx,FIRST_RECTANGLE_Y
-mov starty,bx
-sub starty,5
-mov cx,startx ;setting x = first x (makes a problem)
-mov dx,starty ;setting y = first y (makes a problem)
-mov storey,dx ;store y value
-mov bx,cx ;store x value to bx
-add checkxpix,cx
-add checkypix,dx
-;check first row
-d1:
-int 10h 
-inc cx
-cmp cx,checkxpix
-jne d1
-
-
-
-;draw second column
-d11:
-int 10h ;store color in al
-inc dx
-cmp dx,checkypix
-jne d11
-
-
-
-;check first column at the intial x
-mov cx,bx
-mov dx,storey
-d111:
-int 10h ;store color in al
-inc dx
-cmp dx,checkypix
-jne d111
-
-
-;check second row
-d1111:
-int 10h ;store color in al
-inc cx
-cmp cx,checkxpix
-jne d1111
+    mov cx,FIRST_RECTANGLE_X
+    mov dx,FIRST_RECTANGLE_Y
+    sub cx,12
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 0fh 
+    backdbr1:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne backdbr1
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne backdbr1
+    mov dim1,10
+    mov dim2,10
     ret
 DBR1 ENDP
 
 
 DBR2 PROC
-mov checkxpix,40
-mov checkypix,40
-mov ah,0Ch
-mov al,00h
-mov bx,SECOND_RECTANGLE_X
-mov startx,bx
-sub startx,5
-mov bx,SECOND_RECTANGLE_Y
-mov starty,bx
-sub starty,5
-mov cx,startx ;setting x = first x (makes a problem)
-mov dx,starty ;setting y = first y (makes a problem)
-mov storey,dx ;store y value
-mov bx,cx ;store x value to bx
-add checkxpix,cx
-add checkypix,dx
-;check first row
-d2:
-int 10h 
-inc cx
-cmp cx,checkxpix
-jne d2
-
-
-
-;draw second column
-d22:
-int 10h ;store color in al
-inc dx
-cmp dx,checkypix
-jne d22
-
-
-
-;check first column at the intial x
-mov cx,bx
-mov dx,storey
-d222:
-int 10h ;store color in al
-inc dx
-cmp dx,checkypix
-jne d222
-
-
-;check second row
-d2222:
-int 10h ;store color in al
-inc cx
-cmp cx,checkxpix
-jne d2222
+    mov cx,SECOND_RECTANGLE_X
+    mov dx,SECOND_RECTANGLE_Y
+    sub cx,12
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 0fh 
+    backdbr2:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne backdbr2
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne backdbr2
+    mov dim1,10
+    mov dim2,10
     ret
 DBR2 ENDP
 
