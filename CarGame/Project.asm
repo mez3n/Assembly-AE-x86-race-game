@@ -553,26 +553,7 @@ mov activatedec2Speed,0
 
 skipi4:
 
-;check the number of activated pass obs for car 1
-cmp pass1cnt,0
-je skip5
-;check if it hits an obs then pass it
 
-
-
-dec pass1cnt
-skip5:
-
-
-;check the number of activated pass obs for car 2
-cmp pass2cnt,0
-je skip6
-;check if it hits an obs then pass it
-
-
-
-dec pass2cnt
-skip6:
 
 ;deleting the old rectangle
 DELETE_OLD:
@@ -721,6 +702,8 @@ cmp al,01h
 je Addob1
 cmp al,0Eh
 je Passob1
+cmp al,0fh
+je actpass1
 inc cx
 cmp cx,checkxpix
 jne checkpix1
@@ -739,6 +722,8 @@ cmp al,01h
 je Addob1
 cmp al,0Eh
 je Passob1
+cmp al,0fh
+je actpass1
 inc dx
 cmp dx,checkypix
 jne checkpix11
@@ -759,7 +744,8 @@ cmp al,01h
 je Addob1
 cmp al,0Eh
 je Passob1
-;mov cx,bx
+cmp al,0fh
+je actpass1
 inc dx
 cmp dx,checkypix
 jne checkpix111
@@ -777,7 +763,8 @@ cmp al,01h
 je Addob1
 cmp al,0Eh
 je Passob1
-;mov cx,bx
+cmp al,0fh
+je actpass1
 inc cx
 cmp cx,checkxpix
 jne checkpix1111
@@ -843,6 +830,7 @@ inc puIdx1
 
 inc maxp1
 mov isEnter1,0
+
 jmp finishChecking1
 
 
@@ -866,6 +854,21 @@ inc puIdx1
 inc maxp1
 mov isEnter1,0
 
+
+jmp finishChecking1
+
+;check if it hits an obs
+actpass1:
+mov isEnter1,1
+;check the number of activated pass obs for car 1
+cmp pass1cnt,0
+je dontpass
+;pass obs
+dec pass1cnt
+dontpass:
+;make car stops even if arrows is pressed but make it moves in the direction opposite to the obs
+;.....code
+mov isEnter1,0
 
 finishChecking1:
 mov checkxpix,40
@@ -907,6 +910,8 @@ cmp al,01h
 je Addob2
 cmp al,0Eh
 je Passob2
+cmp al,0fh
+je actpass2
 inc cx
 cmp cx,checkxpix
 jne checkpix2
@@ -925,6 +930,8 @@ cmp al,01h
 je Addob2
 cmp al,0Eh
 je Passob2
+cmp al,0fh
+je actpass2
 inc dx
 cmp dx,checkypix
 jne checkpix22
@@ -945,6 +952,8 @@ cmp al,01h
 je Addob2
 cmp al,0Eh
 je Passob2
+cmp al,0fh
+je actpass2
 inc dx
 cmp dx,checkypix
 jne checkpix222
@@ -962,6 +971,8 @@ cmp al,01h
 je Addob2
 cmp al,0Eh
 je Passob2
+cmp al,0fh
+je actpass2
 inc cx
 cmp cx,checkxpix
 jne checkpix2222
@@ -1048,6 +1059,24 @@ inc puIdx2
 
 inc maxp2
 mov isEnter2,0
+jmp finishChecking2
+
+
+;check if it hits an obs
+actpass2:
+mov isEnter2,1
+;check the number of activated pass obs for car 1
+cmp pass2cnt,0
+je dontpass2
+;pass obs
+dec pass2cnt
+dontpass2:
+;make car stops even if arrows is pressed but make it moves in the direction opposite to the obs
+;.....code
+mov isEnter2,0
+
+
+
 
 finishChecking2:
 mov checkxpix,40
