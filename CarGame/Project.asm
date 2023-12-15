@@ -26,8 +26,8 @@ SECOND_RECTANGLE_X DW  60   ;INITIAL POSITION OF TH ESECOND CAR
 SECOND_RECTANGLE_Y DW  100
 MAX_SPEED1 DW 10    ;maximum speed of the FIRST CAR
 MAX_SPEED2 DW 10    ;maximum speed of the SECOND CAR
-BUTTONS DB 8 DUP(0) 
-SPEEDS DW 16 DUP(0)   ;array of booleans to check which buttons are pressed in each frame 
+BUTTONS DB 8 DUP(0)  ;array of booleans to check which buttons are pressed in each frame 
+SPEEDS DW 16 DUP(0)  
 ; UP:0   LEFT:1   RIGHT:2   DOWN:3  w:4   a:5   d:6   s:7
 RECTANGLE_WIDTH EQU 30
 RECTANGLE_HEIGHT EQU 30
@@ -105,6 +105,7 @@ chatmode:
 jmp mainscreen
 
 gamemode:
+    ;changing video mode
     ; STARTING GAME MODE
     MOV    AX, 4F02H
     MOV    BX, 101H
