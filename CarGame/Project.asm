@@ -10,14 +10,40 @@ username1 db 15,?,15 DUP('$')
 username2 db 15,?,15 DUP('$')
 powerUps1 db 10 dup('$') ;array of poerups for user 1
 powerUps2 db 10 dup('$') ;array of poerups for user 2
+maxp1 db 0
+maxp2 db 0
 ptimer db ?
 speedUp db 0h
 speedDown db 1h
 obstacleBehind db 2h
 passObstacle db 3h
+;activepass1 db 0
+;activepass2 db 0
+pass1cnt db 0
+pass2cnt db 0
 dim1 dw 10
 dim2 dw 10
 storex dw ?
+checkxpix dw 36
+checkypix dw 36
+puIdx1 dw 0
+puIdx2 dw 0
+startx dw ?
+starty dw ?
+storey dw ?
+isEnter1 db 1 ; bool value to check
+isEnter2 db 1 ; bool value to check
+activateinc1Speed db 0
+activatedec1Speed db 0
+activateinc2Speed db 0
+activatedec2Speed db 0
+pi1 db ?
+pi2 db ?
+pi11 db ?
+pi22 db ?
+chp db 0
+chr db 0
+morz db ? ;0->m / 1->z
 CUR_X DW  ?  ; ACTIVE VARIABLES TO BE USED IN FUNCTIONS
 CUR_Y DW  ?
 FIRST_RECTANGLE_X DW 60  ;initial positions of the FIRST CAR
@@ -88,7 +114,7 @@ mainscreen:
   cmp ah, 3Bh    ; F1 key
   je chatmode
   cmp ah, 3Ch    ; F2 key
-  je gamemode    ;note we may want to handle this as (gamemode) will be too far
+  je gamemode    ; note we may want to handle this as (gamemode) will be too far
   cmp al, 1Bh    ; Esc key
   je ExtPrgrm    
   
@@ -115,7 +141,7 @@ gamemode:
     ; Set Cursor Position
     MOV    AH, 2H
     MOV    BH, 0 
-    MOV    DH, 1Ah 
+    MOV    DH, 15h 
     MOV    DL, 2h
     INT    10H
 
@@ -124,10 +150,12 @@ gamemode:
     LEA    DX, username1+2 ; Load the offset of the string
     INT    21H
 
+    
+
     ; Set Cursor Position
     MOV    AH, 2H
     MOV    BH, 0 
-    MOV    DH, 1Ch 
+    MOV    DH, 19h 
     MOV    DL, 2h
     INT    10H
 
@@ -137,7 +165,7 @@ gamemode:
 
     ;draw line for the status bar
     mov cx,0
-    mov dx,405 ;y-axis
+    mov dx,313 ;y-axis
     mov al,0fh ;white
     mov ah,0CH
     back:int 10h
@@ -212,63 +240,22 @@ MOV CX ,09FFFH ; BUFFER FOR READING KEYS THE LESS THIS NUMBER IS THE FASTER THE 
 BUFFER:
 IN AL ,60H
 
-;check if enter or space is pressed to activate powerups
-push ax
-cmp al,0Dh ; enter for user1
-je activateP1ifNempty
-cmp al,20h ; space for user2
-je activateP2ifNempty
-jmp skipActivationofPowerUpsorFinished
-
-
-activateP1ifNempty:
-mov si,offset powerUps1
-mov ah,[si]
-cmp ah,'$'
-jne activate
-jmp skipActivationofPowerUpsorFinished
-activate:
-cmp ah,'+'
-je incSpeed1
-cmp ah,'-'
-je decSpeed2
-cmp ah,'o'
-je addObs
-cmp ah,'p'
-je passObs
-incSpeed1:
-; inc speed 1
-
-jmp ActivationofPowerUpsorFinished
-decSpeed2:
-; dec speed 2
-
-
-jmp ActivationofPowerUpsorFinished
-addObs:
-; add obs
-
-
-jmp ActivationofPowerUpsorFinished
-passObs:
-; pass obs
-
-ActivationofPowerUpsorFinished:
-inc si
-jmp skipActivationofPowerUpsorFinished
-
-
-
-activateP2ifNempty:
-
-
-skipActivationofPowerUpsorFinished:
-pop ax
-
-
-
+;check if enter or space is pressed to activate po
 
 ;marking pressed
+cmp al,32h
+jne pz
+mov chp,1 ; pressed
+mov morz,0
+
+pz:
+cmp al,2Ch
+jne mup
+mov chp,1
+mov morz,1
+
+
+mup:
 CMP AL,48H
 JNE MARK_LEFT
 MOV BUTTONS,1
@@ -305,12 +292,25 @@ MOV BUTTONS+6,1
 
 MARK_S:
 CMP AL,1FH
-JNE DEMARK_UP
+JNE m
 MOV BUTTONS+7,1
 
 
 
 ;demarking released
+m:
+cmp al,32h+80H
+jne z
+cmp chp,1; if equals 1 change chr 
+jne z
+mov chr,1 ; if not pressed set it by 0
+
+z:
+cmp al,2ch+80H
+jne DEMARK_UP
+cmp chp,1
+jne DEMARK_UP
+mov chr,1
 
 DEMARK_UP:
 CMP AL ,48H+80H
@@ -357,6 +357,202 @@ DEC CX
 CMP CX,0
 JNE BUFFER
 
+
+;check if z or m is pressed
+cmp chp,1
+jne skipActivationofPowerUpsorFinished
+cmp chr,1
+jne skipActivationofPowerUpsorFinished
+mov chp,0
+mov chr,0
+
+cmp morz,0h ; m for user1
+je activateP1ifNempty
+cmp morz,1h ; z for user2
+je activateP2ifNempty
+
+
+activateP1ifNempty:
+cmp puIdx1,0 ;if index =0 means no  pu added
+je skipActivationofPowerUpsorFinished
+dec puIdx1
+dec maxp1
+mov bx,offset powerUps1
+add bx,puIdx1
+mov di,bx
+mov al,[bx]
+mov byte ptr [di], '$'  
+cmp al,'+'
+je incSpeed1
+cmp al,'-'
+je decSpeed2
+cmp al,'o'
+je addObs
+cmp al,'p'
+je passObs
+
+
+incSpeed1:
+; inc speed 1
+mov ah, 2Ch
+int 21h
+mov pi1,dh
+mov MAX_SPEED1,20
+mov activateinc1Speed,1
+
+jmp skipActivationofPowerUpsorFinished
+decSpeed2:
+; dec speed 2
+mov ah, 2Ch
+int 21h
+mov pi11,dh
+mov MAX_SPEED2,5 ;what is the speed is more than 5 already
+mov activatedec1Speed,1
+
+jmp skipActivationofPowerUpsorFinished
+addObs:
+; add obs
+CALL DBR1
+
+jmp skipActivationofPowerUpsorFinished
+passObs:
+; pass obs
+; mov activepass1,1
+inc pass1cnt
+;ActivationofPowerUps1orFinished:
+jmp skipActivationofPowerUpsorFinished
+
+
+
+activateP2ifNempty:
+cmp puIdx2,0 ;if index =0 means no  pu added
+je skipActivationofPowerUpsorFinished
+dec puIdx2
+dec maxp2
+mov bx,offset powerUps2
+add bx,puIdx2
+mov di,bx
+mov al,[bx]
+mov byte ptr [di], '$'  
+cmp al,'+'
+je incSpeed2
+cmp al,'-'
+je decSpeed1
+cmp al,'o'
+je addObs2
+cmp al,'p'
+je passObs2
+
+incSpeed2:
+; inc speed 2
+mov ah, 2Ch
+int 21h
+mov pi2,dh
+mov MAX_SPEED2,20
+mov activateinc2Speed,1
+
+jmp skipActivationofPowerUpsorFinished
+decSpeed1:
+mov ah, 2Ch
+int 21h
+mov pi22,dh ; set timer
+mov MAX_SPEED1,5 ;what is the speed is more than 5 already
+mov activatedec2Speed,1
+
+jmp skipActivationofPowerUpsorFinished
+addObs2:
+call DBR2
+
+jmp skipActivationofPowerUpsorFinished
+passObs2:
+;mov activepass2,1
+inc pass2cnt
+
+
+skipActivationofPowerUpsorFinished:
+
+
+
+
+;check if any speed inc or dec is activated to set up a timer for it
+cmp activateinc1Speed,0
+je skipi1
+; Set up the timer
+mov ah, 2Ch
+int 21h
+; Check if 5 seconds have passed
+sub dh, pi1
+jns no_negativei ; Jump if not negative
+add dh, 100 ; Adjust the value to get the correct difference
+no_negativei:
+; Check if the difference is less than 5
+cmp dh, 05h ;print each 5 seconds
+jl skipi1 ; Jump back if less than 5
+mov MAX_SPEED1,10
+mov activateinc1Speed,0
+
+
+skipi1:
+
+;check the inc in second car
+cmp activateinc2Speed,0
+je skipi2
+; Set up the timer
+mov ah, 2Ch
+int 21h
+; Check if 5 seconds have passed
+sub dh, pi2
+jns no_negativei2 ; Jump if not negative
+add dh, 100 ; Adjust the value to get the correct difference
+no_negativei2:
+; Check if the difference is less than 5
+cmp dh, 05h ;print each 5 seconds
+jl skipi2 ; Jump back if less than 5
+mov MAX_SPEED2,10
+mov activateinc2Speed,0
+
+
+skipi2:
+
+;check dec in second car
+cmp activatedec1Speed,0
+je skipi3
+; Set up the timer
+mov ah, 2Ch
+int 21h
+; Check if 5 seconds have passed
+sub dh, pi11
+jns no_negativei3 ; Jump if not negative
+add dh, 100 ; Adjust the value to get the correct difference
+no_negativei3:
+; Check if the difference is less than 5
+cmp dh, 05h ;print each 5 seconds
+jl skipi3 ; Jump back if less than 5
+mov MAX_SPEED2,10
+mov activatedec1Speed,0
+
+
+skipi3:
+
+;check dec in first car
+cmp activatedec2Speed,0
+je skipi4
+; Set up the timer
+mov ah, 2Ch
+int 21h
+; Check if 5 seconds have passed
+sub dh, pi22
+jns no_negativei4 ; Jump if not negative
+add dh, 100 ; Adjust the value to get the correct difference
+no_negativei4:
+; Check if the difference is less than 5
+cmp dh, 05h ;print each 5 seconds
+jl skipi4 ; Jump back if less than 5
+mov MAX_SPEED1,10
+mov activatedec2Speed,0
+
+
+skipi4:
 
 
 
@@ -473,6 +669,497 @@ MOV CUR_Y,DX
 CALL DRAW_NEW_LOCATION_SECOND
 
 
+
+;check every pixel of the car if hits a PU
+cmp maxp1,8
+jne checkfirstcar
+jmp finishChecking1
+
+checkfirstcar:
+mov ah,0Dh
+mov bx,FIRST_RECTANGLE_X
+mov startx,bx
+sub startx,5
+mov bx,FIRST_RECTANGLE_Y
+mov starty,bx
+sub starty,5
+mov cx,startx ;setting x = first x (makes a problem)
+mov dx,starty ;setting y = first y (makes a problem)
+mov storey,dx ;store y value
+mov bx,cx ;store x value to bx
+add checkxpix,cx
+add checkypix,dx
+
+
+;check first row
+checkpix1:
+int 10h ;store color in al
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
+je decs1
+cmp al,02h
+je incs1
+cmp al,01h
+je Addob1
+cmp al,0Eh
+je Passob1
+cmp al,0fh
+je actpass1
+inc cx
+cmp cx,checkxpix
+jne checkpix1
+
+
+
+;check second column
+checkpix11:
+int 10h ;store color in al
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
+je decs1
+cmp al,02h
+je incs1
+cmp al,01h
+je Addob1
+cmp al,0Eh
+je Passob1
+cmp al,0fh
+je actpass1
+inc dx
+cmp dx,checkypix
+jne checkpix11
+
+
+
+;check first column at the intial x
+mov cx,bx
+mov dx,storey
+checkpix111:
+int 10h ;store color in al
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
+je decs1
+cmp al,02h
+je incs1
+cmp al,01h
+je Addob1
+cmp al,0Eh
+je Passob1
+cmp al,0fh
+je actpass1
+inc dx
+cmp dx,checkypix
+jne checkpix111
+
+
+;check second row
+checkpix1111:
+int 10h ;store color in al
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
+je decs1
+cmp al,02h
+je incs1
+cmp al,01h
+je Addob1
+cmp al,0Eh
+je Passob1
+cmp al,0fh
+je actpass1
+inc cx
+cmp cx,checkxpix
+jne checkpix1111
+
+mov isEnter1,1
+jmp finishChecking1
+
+
+decs1:
+cmp isEnter1,1
+je st1
+jmp finishChecking1
+st1:
+;store pu
+mov bx, offset powerUps1   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx1                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], '-'  ; Assign the desired value ('-') to the current element
+inc puIdx1
+
+inc maxp1
+mov isEnter1,0
+jmp finishChecking1
+
+
+incs1:
+cmp isEnter1,1
+je st11
+jmp finishChecking1
+st11:
+;store pu
+mov bx, offset powerUps1   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx1                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], '+'  ; Assign the desired value ('-') to the current element
+mov dl,[di]
+inc puIdx1
+
+
+inc maxp1
+mov isEnter1,0
+jmp finishChecking1
+
+
+Addob1:
+cmp isEnter1,1
+je st111
+jmp finishChecking1
+st111:
+;store pu
+
+mov bx, offset powerUps1   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx1                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], 'o'  ; Assign the desired value ('-') to the current element
+inc puIdx1
+
+;we may use maxp1 instead of puidx1
+
+
+inc maxp1
+mov isEnter1,0
+
+jmp finishChecking1
+
+
+
+Passob1:
+cmp isEnter1,1
+je st1111
+jmp finishChecking1
+st1111:
+;store pu
+
+mov bx, offset powerUps1   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx1                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], 'p'  ; Assign the desired value ('-') to the current element
+inc puIdx1
+;we may use maxp1 instead of puidx1
+
+
+inc maxp1
+mov isEnter1,0
+
+
+jmp finishChecking1
+
+;check if it hits an obs
+actpass1:
+mov isEnter1,1
+;check the number of activated pass obs for car 1
+cmp pass1cnt,0
+je dontpass
+;pass obs
+dec pass1cnt
+dontpass:
+;make car stops even if arrows is pressed but make it moves in the direction opposite to the obs
+;.....code
+mov isEnter1,0
+
+finishChecking1:
+mov checkxpix,40
+mov checkypix,40
+
+    
+
+
+
+cmp maxp2,8
+jne checksecondcar
+jmp finishChecking2
+checksecondcar:
+
+mov ah,0Dh
+mov bx,SECOND_RECTANGLE_X
+mov startx,bx
+sub startx,5
+mov bx,SECOND_RECTANGLE_Y
+mov starty,bx
+sub starty,5
+mov cx,startx ;setting x = first x (makes a problem)
+mov dx,starty ;setting y = first y (makes a problem)
+mov storey,dx ;store y value
+mov bx,cx ;store x value to bx
+add checkxpix,cx
+add checkypix,dx
+
+
+;check first row
+checkpix2:
+int 10h ;store color in al
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
+je decs2
+cmp al,02h
+je incs2
+cmp al,01h
+je Addob2
+cmp al,0Eh
+je Passob2
+cmp al,0fh
+je actpass2
+inc cx
+cmp cx,checkxpix
+jne checkpix2
+
+
+
+;check second column
+checkpix22:
+int 10h ;store color in al
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
+je decs2
+cmp al,02h
+je incs2
+cmp al,01h
+je Addob2
+cmp al,0Eh
+je Passob2
+cmp al,0fh
+je actpass2
+inc dx
+cmp dx,checkypix
+jne checkpix22
+
+
+
+;check first column at the intial x
+mov cx,bx
+mov dx,storey
+checkpix222:
+int 10h ;store color in al
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
+je decs2
+cmp al,02h
+je incs2
+cmp al,01h
+je Addob2
+cmp al,0Eh
+je Passob2
+cmp al,0fh
+je actpass2
+inc dx
+cmp dx,checkypix
+jne checkpix222
+
+
+;check second row
+checkpix2222:
+int 10h ;store color in al
+;check color 04->red / 02->green / 01->blue / 0E->yellow
+cmp al,04H
+je decs2
+cmp al,02h
+je incs2
+cmp al,01h
+je Addob2
+cmp al,0Eh
+je Passob2
+cmp al,0fh
+je actpass2
+inc cx
+cmp cx,checkxpix
+jne checkpix2222
+
+mov isEnter2,1
+jmp finishChecking2
+
+
+decs2:
+cmp isEnter2,1
+je st2
+jmp finishChecking2
+st2:
+;store pu
+mov bx, offset powerUps2   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx2                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], '-'  ; Assign the desired value ('-') to the current element
+inc puIdx2
+;we may use maxp2 instead of puidx2
+
+
+inc maxp2
+mov isEnter2,0
+jmp finishChecking2
+
+
+incs2:
+cmp isEnter2,1
+je st22
+jmp finishChecking2
+st22:
+;store pu
+mov bx, offset powerUps2   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx2                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], '+'  ; Assign the desired value ('-') to the current element
+inc puIdx2
+;we may use maxp2 instead of puidx2
+
+
+inc maxp2
+mov isEnter2,0
+jmp finishChecking2
+
+
+Addob2:
+cmp isEnter2,1
+je st222
+jmp finishChecking2
+st222:
+;store pu
+mov bx, offset powerUps2   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx2                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], 'o'  ; Assign the desired value ('-') to the current element
+inc puIdx2
+;we may use maxp2 instead of puidx2
+
+
+inc maxp2
+mov isEnter2,0
+jmp finishChecking2
+
+
+
+Passob2:
+cmp isEnter2,1
+je st2222
+jmp finishChecking2
+st2222:
+;store pu
+mov bx, offset powerUps2   ; Save the offset of powerUps1 in the BX register
+mov cx, puIdx2                  ; Set the index value to the CX register
+add bx, cx                 ; Add the offset to the base address
+mov di, bx                 ; Store the updated address in the DI register
+mov byte ptr [di], 'p'  ; Assign the desired value ('-') to the current element
+inc puIdx2
+;we may use maxp2 instead of puidx2
+
+
+inc maxp2
+mov isEnter2,0
+jmp finishChecking2
+
+
+;check if it hits an obs
+actpass2:
+mov isEnter2,1
+;check the number of activated pass obs for car 1
+cmp pass2cnt,0
+je dontpass2
+;pass obs
+dec pass2cnt
+dontpass2:
+;make car stops even if arrows is pressed but make it moves in the direction opposite to the obs
+;.....code
+mov isEnter2,0
+
+
+
+
+finishChecking2:
+mov checkxpix,40
+mov checkypix,40
+
+
+
+
+
+
+
+
+
+
+;print PUs
+
+; Set Cursor Position user1
+    MOV    AH, 2H
+    MOV    BH, 0 
+    MOV    DH, 16h 
+    MOV    DL, 2h
+    INT    10H
+
+
+    ;print new line (array1)
+    mov cx,0
+    cntl:
+    mov bx,offset powerUps1
+    add bx,cx
+    mov dl, [bx]  
+    cmp dl,'$'
+    jne p             ; Set the index value to the CX register
+    mov dl,' '
+    p:
+    mov ah, 02h        ; Set AH=02h to set the print function
+    int 21h            ; Print the value stored in DL
+    inc cx
+    cmp cx,8
+    je finishprint1
+    jmp cntl
+
+finishprint1:
+
+;second user
+
+;delete line
+mov ax,0600h
+mov bh,07
+mov cx,021Ah
+mov dx,0ff15h
+int 10h
+
+; Set Cursor Position user1
+    MOV    AH, 2H
+    MOV    BH, 0 
+    MOV    DH, 1Ah 
+    MOV    DL, 2h
+    INT    10H
+
+
+    ;print new line (array1)
+    mov cx,0
+    cntl2:
+    mov bx,offset powerUps2
+    add bx,cx
+    mov dl, [bx]  
+    cmp dl,'$'
+    jne px             ; Set the index value to the CX register
+    mov dl,' '
+    px:
+    mov ah, 02h        ; Set AH=02h to set the print function
+    int 21h            ; Print the value stored in DL
+    inc cx
+    cmp cx,8
+    je finishprint2              ; Set the index value to the CX register
+    jmp cntl2
+
+finishprint2:
+
+
+
+
 ; Set up the timer
 mov ah, 2Ch
 int 21h
@@ -503,7 +1190,7 @@ cmp ah,2h
 je addObsBehind
 cmp ah,3h
 je addPassObs
-
+;check color 04->red / 02->green / 01->blue / 0E->yellow
 addincSpeed:;green
 ;Generate a random x-postion
     MOV AH, 2Ch               ; Get system time
@@ -522,9 +1209,9 @@ addincSpeed:;green
     INT 21h
     and dx,0fffh
     check2:
-    cmp dx,405
+    cmp dx,310
     jl skipsub2
-    sub dx,600    
+    sub dx,650    
     jmp check2
     skipsub2:
     pop cx
@@ -533,7 +1220,7 @@ addincSpeed:;green
     add dim2,dx
     mov storex,cx
     mov ah, 0Ch ; Set color attribute
-    mov al, 04h 
+    mov al, 02h 
     back1:int 10h
     inc cx
     cmp cx,dim1 ; x-axis width+x-position width=10
@@ -546,7 +1233,7 @@ addincSpeed:;green
     mov dim2,10
 
 JMP loadPowerUpTimer
-
+;check color 04->red / 02->green / 01->blue / 0E->yellow
 
 addDecSpeed: ;red
 ;Generate a random x-postion
@@ -566,9 +1253,9 @@ addDecSpeed: ;red
     INT 21h
     and dx,0fffh
     check4:
-    cmp dx,405
+    cmp dx,310
     jl skipsub4
-    sub dx,600    
+    sub dx,650    
     jmp check4
     skipsub4:
     pop cx
@@ -577,7 +1264,7 @@ addDecSpeed: ;red
     add dim2,dx
     mov storex,cx
     mov ah, 0Ch ; Set color attribute
-    mov al, 0Ch 
+    mov al, 04h 
     back2:int 10h
     inc cx
     cmp cx,dim1 ; x-axis width+x-position width=10
@@ -590,7 +1277,7 @@ addDecSpeed: ;red
     mov dim2,10
 JMP loadPowerUpTimer
 
-
+;check color 04->red / 02->green / 01->blue / 0E->yellow
 addObsBehind:;blue
 ;Generate a random x-postion
     MOV AH, 2Ch               ; Get system time
@@ -609,9 +1296,9 @@ addObsBehind:;blue
     INT 21h
     and dx,0fffh
     check6:
-    cmp dx,405
+    cmp dx,310
     jl skipsub6
-    sub dx,600    
+    sub dx,650    
     jmp check6
     skipsub6:
     pop cx
@@ -620,7 +1307,7 @@ addObsBehind:;blue
     add dim2,dx
     mov storex,cx
     mov ah, 0Ch ; Set color attribute
-    mov al, 03h 
+    mov al, 01h 
     back3:int 10h
     inc cx
     cmp cx,dim1 ; x-axis width+x-position width=10
@@ -652,9 +1339,9 @@ addPassObs:;yellow
     INT 21h
     and dx,0fffh
     check8:
-    cmp dx,405
+    cmp dx,310
     jl skipsub8
-    sub dx,600    
+    sub dx,650    
     jmp check8
     skipsub8:
     pop cx
@@ -680,6 +1367,54 @@ MAIN ENDP
 
 
 ;========================= PROCEDUERS=============================================
+DBR1 PROC
+    mov cx,FIRST_RECTANGLE_X
+    mov dx,FIRST_RECTANGLE_Y
+    sub cx,12
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 0fh 
+    backdbr1:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne backdbr1
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne backdbr1
+    mov dim1,10
+    mov dim2,10
+    ret
+DBR1 ENDP
+
+
+DBR2 PROC
+    mov cx,SECOND_RECTANGLE_X
+    mov dx,SECOND_RECTANGLE_Y
+    sub cx,12
+    add dim1,cx
+    add dim2,dx
+    mov storex,cx
+    mov ah, 0Ch ; Set color attribute
+    mov al, 0fh 
+    backdbr2:int 10h
+    inc cx
+    cmp cx,dim1 ; x-axis width+x-position width=10
+    jne backdbr2
+    mov cx,storex
+    inc dx
+    cmp dx,dim2
+    jne backdbr2
+    mov dim1,10
+    mov dim2,10
+    ret
+DBR2 ENDP
+
+
+
+
 DRAW_NEW_LOCATION_FIRST PROC 
 MOV AX, FIRST_RECTANGLE_X
 MOV BX,FIRST_RECTANGLE_Y
