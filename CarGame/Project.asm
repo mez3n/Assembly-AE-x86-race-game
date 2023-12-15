@@ -29,7 +29,14 @@ starty dw ?
 storey dw ?
 isEnter1 db 1 ; bool value to check
 isEnter2 db 1 ; bool value to check
-
+activateinc1Speed db 0
+activatedec1Speed db 0
+activateinc2Speed db 0
+activatedec2Speed db 0
+pi1 db ?
+chp db 0
+chr db 0
+morz db ? ;0->m / 1->z
 CUR_X DW  ?  ; ACTIVE VARIABLES TO BE USED IN FUNCTIONS
 CUR_Y DW  ?
 FIRST_RECTANGLE_X DW 60  ;initial positions of the FIRST CAR
@@ -225,61 +232,16 @@ MOV CX ,09FFFH ; BUFFER FOR READING KEYS THE LESS THIS NUMBER IS THE FASTER THE 
 BUFFER:
 IN AL ,60H
 
-;check if enter or space is pressed to activate powerups
-push ax
-cmp al,0Dh ; enter for user1
-je activateP1ifNempty
-cmp al,20h ; space for user2
-je activateP2ifNempty
-jmp skipActivationofPowerUpsorFinished
-
-
-activateP1ifNempty:
-mov si,offset powerUps1
-mov ah,[si]
-cmp ah,'$'
-jne activate
-jmp skipActivationofPowerUpsorFinished
-activate:
-cmp ah,'+'
-je incSpeed1
-cmp ah,'-'
-je decSpeed2
-cmp ah,'o'
-je addObs
-cmp ah,'p'
-je passObs
-incSpeed1:
-; inc speed 1
-
-jmp ActivationofPowerUpsorFinished
-decSpeed2:
-; dec speed 2
-
-
-jmp ActivationofPowerUpsorFinished
-addObs:
-; add obs
-
-
-jmp ActivationofPowerUpsorFinished
-passObs:
-; pass obs
-
-ActivationofPowerUpsorFinished:
-inc si
-jmp skipActivationofPowerUpsorFinished
-
-
-
-activateP2ifNempty:
-
-
-skipActivationofPowerUpsorFinished:
-pop ax
-
+;check if enter or space is pressed to activate po
 
 ;marking pressed
+cmp al,32h
+jne mup
+mov chp,1 ; pressed
+mov morz,0
+
+
+mup:
 CMP AL,48H
 JNE MARK_LEFT
 MOV BUTTONS,1
@@ -316,12 +278,16 @@ MOV BUTTONS+6,1
 
 MARK_S:
 CMP AL,1FH
-JNE DEMARK_UP
+JNE m
 MOV BUTTONS+7,1
 
 
 
 ;demarking released
+m:
+cmp al,32h+80H
+jne DEMARK_UP
+mov chr,1 ; if not pressed set it by 0
 
 DEMARK_UP:
 CMP AL ,48H+80H
@@ -367,6 +333,106 @@ FIN_DEMARK:
 DEC CX
 CMP CX,0
 JNE BUFFER
+
+
+;check if z or m is pressed
+cmp chp,1
+jne skipActivationofPowerUpsorFinished
+cmp chr,1
+jne skipActivationofPowerUpsorFinished
+mov chp,0
+mov chr,0
+
+cmp morz,0h ; m for user1
+je activateP1ifNempty
+cmp morz,1h ; z for user2
+je activateP2ifNempty
+
+
+activateP1ifNempty:
+cmp puIdx1,0 ;if index =0 means no  pu added
+je skipActivationofPowerUpsorFinished
+dec puIdx1
+dec maxp1
+mov bx,offset powerUps1
+add bx,puIdx1
+mov di,bx
+mov al,[bx]
+mov byte ptr [di], '$'  
+cmp al,'+'
+je incSpeed1
+cmp al,'-'
+je decSpeed2
+cmp al,'o'
+je addObs
+cmp al,'p'
+je passObs
+
+
+incSpeed1:
+; inc speed 1
+mov ah, 2Ch
+int 21h
+mov pi1,dh
+mov MAX_SPEED1,20
+mov activateinc1Speed,1
+
+
+mov ah,02h
+mov dl,'d'
+int 21h  
+
+
+jmp ActivationofPowerUps1orFinished
+decSpeed2:
+; dec speed 2
+
+
+jmp ActivationofPowerUps1orFinished
+addObs:
+; add obs
+
+
+jmp ActivationofPowerUps1orFinished
+passObs:
+; pass obs
+
+ActivationofPowerUps1orFinished:
+jmp skipActivationofPowerUpsorFinished
+
+
+
+activateP2ifNempty:
+
+
+skipActivationofPowerUpsorFinished:
+
+
+
+
+;check if any speed inc or dec is activated to set up a timer for it
+cmp activateinc1Speed,0
+je skipi1
+; Set up the timer
+mov ah, 2Ch
+int 21h
+; Check if 5 seconds have passed
+sub dh, pi1
+jns no_negativei ; Jump if not negative
+add dh, 100 ; Adjust the value to get the correct difference
+no_negativei:
+; Check if the difference is less than 5
+cmp dh, 05h ;print each 5 seconds
+jl skipi1 ; Jump back if less than 5
+mov MAX_SPEED1,10
+mov activateinc1Speed,0
+
+
+skipi1:
+
+
+
+
 
 
 
@@ -850,13 +916,16 @@ finishChecking2:
 mov checkxpix,40
 mov checkypix,40
 
+
+
+
+
+
+
+
+
+
 ;print PUs
-;delete line
-mov ax,0600h
-mov bh,07
-mov cx,0216h
-mov dx,0ff15h
-int 10h
 
 ; Set Cursor Position user1
     MOV    AH, 2H
@@ -873,10 +942,14 @@ int 10h
     add bx,cx
     mov dl, [bx]  
     cmp dl,'$'
-    je finishprint1              ; Set the index value to the CX register
+    jne p             ; Set the index value to the CX register
+    mov dl,' '
+    p:
     mov ah, 02h        ; Set AH=02h to set the print function
     int 21h            ; Print the value stored in DL
     inc cx
+    cmp cx,8
+    je finishprint1
     jmp cntl
 
 finishprint1:
