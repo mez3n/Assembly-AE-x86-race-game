@@ -34,6 +34,7 @@ activatedec1Speed db 0
 activateinc2Speed db 0
 activatedec2Speed db 0
 pi1 db ?
+pi2 db ?
 chp db 0
 chr db 0
 morz db ? ;0->m / 1->z
@@ -236,9 +237,15 @@ IN AL ,60H
 
 ;marking pressed
 cmp al,32h
-jne mup
+jne pz
 mov chp,1 ; pressed
 mov morz,0
+
+pz:
+cmp al,2Ch
+jne mup
+mov chp,1
+mov morz,1
 
 
 mup:
@@ -286,8 +293,17 @@ MOV BUTTONS+7,1
 ;demarking released
 m:
 cmp al,32h+80H
-jne DEMARK_UP
+jne z
+cmp chp,1; if equals 1 change chr 
+jne z
 mov chr,1 ; if not pressed set it by 0
+
+z:
+cmp al,2ch+80H
+jne DEMARK_UP
+cmp chp,1
+jne DEMARK_UP
+mov chr,1
 
 DEMARK_UP:
 CMP AL ,48H+80H
@@ -377,26 +393,66 @@ mov pi1,dh
 mov MAX_SPEED1,20
 mov activateinc1Speed,1
 
-jmp ActivationofPowerUps1orFinished
+jmp skipActivationofPowerUpsorFinished
 decSpeed2:
 ; dec speed 2
 
 
-jmp ActivationofPowerUps1orFinished
+jmp skipActivationofPowerUpsorFinished
 addObs:
 ; add obs
 
 
-jmp ActivationofPowerUps1orFinished
+jmp skipActivationofPowerUpsorFinished
 passObs:
 ; pass obs
 
-ActivationofPowerUps1orFinished:
+;ActivationofPowerUps1orFinished:
 jmp skipActivationofPowerUpsorFinished
 
 
 
 activateP2ifNempty:
+cmp puIdx2,0 ;if index =0 means no  pu added
+je skipActivationofPowerUpsorFinished
+dec puIdx2
+dec maxp2
+mov bx,offset powerUps2
+add bx,puIdx2
+mov di,bx
+mov al,[bx]
+mov byte ptr [di], '$'  
+cmp al,'+'
+je incSpeed2
+cmp al,'-'
+je decSpeed1
+cmp al,'o'
+je addObs2
+cmp al,'p'
+je passObs2
+
+incSpeed2:
+; inc speed 2
+mov ah, 2Ch
+int 21h
+mov pi2,dh
+mov MAX_SPEED2,20
+mov activateinc2Speed,1
+
+jmp skipActivationofPowerUpsorFinished
+decSpeed1:
+
+
+jmp skipActivationofPowerUpsorFinished
+addObs2:
+
+
+jmp skipActivationofPowerUpsorFinished
+passObs2:
+
+;ActivationofPowerUps2orFinished:
+;jmp skipActivationofPowerUpsorFinished
+
 
 
 skipActivationofPowerUpsorFinished:
@@ -425,8 +481,24 @@ mov activateinc1Speed,0
 skipi1:
 
 
+cmp activateinc2Speed,0
+je skipi2
+; Set up the timer
+mov ah, 2Ch
+int 21h
+; Check if 5 seconds have passed
+sub dh, pi2
+jns no_negativei2 ; Jump if not negative
+add dh, 100 ; Adjust the value to get the correct difference
+no_negativei2:
+; Check if the difference is less than 5
+cmp dh, 05h ;print each 5 seconds
+jl skipi2 ; Jump back if less than 5
+mov MAX_SPEED2,10
+mov activateinc2Speed,0
 
 
+skipi2:
 
 
 
@@ -972,10 +1044,14 @@ int 10h
     add bx,cx
     mov dl, [bx]  
     cmp dl,'$'
-    je finishprint2              ; Set the index value to the CX register
+    jne px             ; Set the index value to the CX register
+    mov dl,' '
+    px:
     mov ah, 02h        ; Set AH=02h to set the print function
     int 21h            ; Print the value stored in DL
     inc cx
+    cmp cx,8
+    je finishprint2              ; Set the index value to the CX register
     jmp cntl2
 
 finishprint2:
