@@ -1,8 +1,8 @@
 
  Start  Stop   Length Name               Class
 
- 00000H 00F50H 00F51H DATA               
- 00F60H 01BB5H 00C56H CODE               
+ 00000H 00F52H 00F53H DATA               
+ 00F60H 01C53H 00CF4H CODE               
 
 Program entry point at 00F6:0000
 Warning: No stack
