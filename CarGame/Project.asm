@@ -59,17 +59,22 @@
     MAX_SPEED2 DW 3    ;maximum speed of the SECOND CAR
     BUTTONS DB 8 DUP(0)  ;array of booleans to check which buttons are pressed in each frame 
     SPEEDS DW 16 DUP(0)  
+    endx dw ?  ; x of end point
+    endy dw ?  ; y of end point
+    original_dist dw ? ; initial distance between cars and end point
+    distance_1 dw ?
+    distance_2 dw ?
     ; UP:0   LEFT:1   RIGHT:2   DOWN:3  w:4   a:5   d:6   s:7
-    RECTANGLE_WIDTH EQU 30
-    RECTANGLE_HEIGHT EQU 30
-    IMG_SIZE EQU 30*30
+    RECTANGLE_WIDTH EQU 20
+    RECTANGLE_HEIGHT EQU 20
+    IMG_SIZE EQU 20*20
     FILE_NAME1 DB "car.bin",0
     FILE_NAME2 DB "car1.bin",0
     FILE_NAME3 DB "sec.bin",0
     FILE_NAME4 DB "sec1.bin",0
     IMG1 DB 2*IMG_SIZE DUP(?)
     IMG2 DB 2*IMG_SIZE DUP(?)
-    .data
+    
         x1           dw ?
         x2           dw ?
         y1           dw ?
@@ -94,6 +99,8 @@
         ygreater     dw ?
         x            dw ?
         y            dw ?
+        
+        
     CODE SEGMENT USE16
     ASSUME CS:CODE,DS:DATA
     INCLUDE macros.asm
@@ -397,8 +404,30 @@
                         jnz  outerloop2
         nexsst:         
                     
-
-
+        ; calculating end points
+        mov ax,x1
+        mov bx,x2
+        add ax,bx
+        shr ax,1
+        mov endx,ax
+        mov ax,y1
+        mov bx,y2
+        add ax,bx
+        shr ax,1
+        mov endy,ax
+       ; calculating distance from x
+        mov ax, ENDX
+        mov bx, FIRST_RECTANGLE_X
+        call calc_dist
+        mov original_dist, cx
+        ; calculating distance from y
+        mov ax, ENDY
+        mov bx, FIRST_RECTANGLE_Y
+        call calc_dist
+        add original_dist, cx
+        
+        
+        
         ; Set Cursor Position
         MOV    AH, 2H
         MOV    BH, 0 
@@ -928,7 +957,53 @@
     MOV CUR_X,CX
     MOV CUR_Y,DX
     CALL DRAW_NEW_LOCATION_SECOND
+    
 
+    ;code for calculating score
+    ; calculating x distance
+    mov ax, endx
+    mov bx, FIRST_RECTANGLE_X
+    call calc_dist
+    mov dx,cx
+
+    ;calculating y distance
+    mov ax, endy
+    mov bx, FIRST_RECTANGLE_y
+    call calc_dist
+    add dx,cx
+    
+    ; calculating percentage
+    mov ax,dx
+    mov dx,0
+    mov cx,original_dist
+    div cx
+    mov ax,dx
+    mov cx,100
+    mul cx
+    mov distance_1, ax
+
+
+    ; calculating x distance
+    mov ax, endx
+    mov bx, SECOND_RECTANGLE_X
+    call calc_dist
+    mov dx,cx
+
+    ;calculating y distance
+    mov ax, endy
+    mov bx, SECOND_RECTANGLE_Y
+    call calc_dist
+    add dx,cx
+    
+    ; calculating percentage
+    mov ax,dx
+    mov dx,0
+    mov cx,original_dist
+    div cx
+    mov ax,dx
+    mov cx,100
+    mul cx
+    mov distance_2, ax
 
 
     ;check every pixel of the car if hits a PU
@@ -1628,6 +1703,20 @@
 
 
     ;========================= PROCEDUERS=============================================
+    calc_dist PROC
+    CMP AX,BX
+    JA AX_LARGER
+    MOV CX,BX
+    SUB CX,AX
+    RET
+    AX_LARGER:
+    MOV CX,AX
+    SUB CX,BX
+    RET
+    calc_dist ENDP
+
+
+
     DBR1 PROC
         mov cx,FIRST_RECTANGLE_X
         mov dx,FIRST_RECTANGLE_Y
@@ -1919,6 +2008,9 @@
     RET
     ACCELERATION ENDP
 
+
+    GETDIST PROC
+        
 
     randomp PROC
         againgrand:     
@@ -3947,5 +4039,8 @@
                         mov  prevrand,ah
                         ret
     moveright ENDP
+
+
+
 
     END MAIN
